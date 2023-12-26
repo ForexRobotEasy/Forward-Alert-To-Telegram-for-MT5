@@ -1,0 +1,102 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                            Forward Alert To Telegram for MT5 |
+//|                                              Copyright 2022, forexroboteasy.com |
+//|                                              Developed by Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| External dependencies                                             |
+//+------------------------------------------------------------------+
+#include <TelegramAPI.mqh> // Include the Telegram API library
+#include <WinUser32.mqh>   // Include the WinUser32 library for capturing screenshots
+
+//+------------------------------------------------------------------+
+//| Global variables                                                 |
+//+------------------------------------------------------------------+
+string apiKey = 'YOUR_TELEGRAM_API_KEY'; // Replace with your Telegram API key
+string channelId = '-1001234567890';   // Replace with your Telegram channel/group ID
+
+bool forwardAlerts = true; // Enable/disable forwarding of alerts
+
+//+------------------------------------------------------------------+
+//| Custom function to forward alerts to Telegram                     |
+//+------------------------------------------------------------------+
+void ForwardAlertToTelegram(string symbol, string tradeDetails, datetime alertTime)
+{
+   if (!forwardAlerts)
+      return;
+
+   // Capture screenshot of the alert
+   string screenshotPath = CaptureScreenshot();
+
+   // Create a Telegram message with the alert details and attach the screenshot
+   string message = 'New Alert!\n\nSymbol: ' + symbol + '\nTrade Details: ' + tradeDetails + '\nAlert Time: ' + TimeToString(alertTime);
+   TelegramAPI::SendPhoto(apiKey, channelId, screenshotPath, message);
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to capture screenshot of the alert                |
+//+------------------------------------------------------------------+
+string CaptureScreenshot()
+{
+   string screenshotPath = TerminalInfoString(TERMINAL_DATA_PATH) + '\\Screenshots\\' + TimeToString(TimeLocal(), TIME_DATE|TIME_MINUTES|TIME_SECONDS) + '.png';
+   WinUser32::CaptureScreen(screenshotPath, 0, 0, TerminalInfoInteger(TERMINAL_SCREEN_WIDTH), TerminalInfoInteger(TERMINAL_SCREEN_HEIGHT));
+
+   return screenshotPath;
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to handle pop-up alerts                           |
+//+------------------------------------------------------------------+
+void OnAlert(string symbol, string tradeDetails, datetime alertTime)
+{
+   ForwardAlertToTelegram(symbol, tradeDetails, alertTime);
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to initialize the script                          |
+//+------------------------------------------------------------------+
+void OnInit()
+{
+   // Register the OnAlert function as the handler for pop-up alerts
+   Alert('ForwardAlertToTelegram::OnAlert');
+
+   // Subscribe to pop-up alerts
+   EventSetTimer(1);
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to deinitialize the script                        |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   // Unsubscribe from pop-up alerts
+   EventKillTimer();
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to handle timer events                            |
+//+------------------------------------------------------------------+
+void OnTimer()
+{
+   // Check for new pop-up alerts
+   if (AlertIs())
+   {
+      // Get the alert details
+      string symbol = AlertSymbol();
+      string tradeDetails = AlertString();
+      datetime alertTime = TimeLocal();
+
+      // Handle the alert
+      OnAlert(symbol, tradeDetails, alertTime);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Custom function to handle program start                           |
+//+------------------------------------------------------------------+
+void OnStart()
+{
+   // Do nothing
+}
